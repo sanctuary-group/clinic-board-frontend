@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>クリニックボード - 設定</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="shared/tailwind-config.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="shared/clinic-board.css">
+</head>
+<body class="font-body text-slate-900 min-h-screen">
+
+  <div id="app-header"></div>
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Page Title -->
+    <div class="flex items-center gap-3 mb-8">
+      <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
+        <i class="fa-solid fa-gear text-slate-600"></i>
+      </div>
+      <h2 class="text-2xl font-bold text-slate-900">設定</h2>
+    </div>
+
+    <!-- Section 1: Clinic Information -->
+    <section class="bg-white rounded-xl shadow-elevation-1 p-6 mb-6 animate-fade-in">
+      <div class="flex items-center gap-2 mb-5">
+        <i class="fa-solid fa-hospital text-medical-600"></i>
+        <h3 class="text-lg font-semibold text-slate-900">クリニック情報</h3>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
+          <label class="form-label">クリニック名</label>
+          <input type="text" id="clinic-name" class="form-input" placeholder="例: ○○クリニック">
+        </div>
+        <div>
+          <label class="form-label">郵便番号</label>
+          <input type="text" id="clinic-postal" class="form-input" placeholder="例: 100-0001">
+        </div>
+        <div>
+          <label class="form-label">電話番号</label>
+          <input type="tel" id="clinic-phone" class="form-input" placeholder="例: 03-1234-5678">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="form-label">住所</label>
+          <input type="text" id="clinic-address" class="form-input" placeholder="例: 東京都千代田区...">
+        </div>
+        <div>
+          <label class="form-label">FAX番号</label>
+          <input type="tel" id="clinic-fax" class="form-input" placeholder="例: 03-1234-5679">
+        </div>
+        <div>
+          <label class="form-label">院長名</label>
+          <input type="text" id="clinic-director" class="form-input" placeholder="例: 山田 太郎">
+        </div>
+        <div>
+          <label class="form-label">医療機関コード</label>
+          <input type="text" id="clinic-code" class="form-input" placeholder="例: 1310000001">
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Department Management -->
+    <section class="bg-white rounded-xl shadow-elevation-1 p-6 mb-6 animate-fade-in">
+      <div class="flex items-center gap-2 mb-5">
+        <i class="fa-solid fa-stethoscope text-medical-600"></i>
+        <h3 class="text-lg font-semibold text-slate-900">診療科管理</h3>
+      </div>
+      <div id="dept-list" class="space-y-1 mb-4">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="flex gap-2">
+        <input type="text" id="new-dept-name" class="form-input flex-1" placeholder="新しい診療科名を入力...">
+        <button onclick="addDepartment()" class="px-4 py-2.5 bg-medical-600 text-white rounded-lg text-sm font-medium hover:bg-medical-700 transition-colors flex-shrink-0">
+          <i class="fa-solid fa-plus mr-1"></i>追加
+        </button>
+      </div>
+    </section>
+
+    <!-- Section 3: Display Settings -->
+    <section class="bg-white rounded-xl shadow-elevation-1 p-6 mb-6 animate-fade-in">
+      <div class="flex items-center gap-2 mb-5">
+        <i class="fa-solid fa-display text-medical-600"></i>
+        <h3 class="text-lg font-semibold text-slate-900">表示設定</h3>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="form-label">1ページあたりの表示件数</label>
+          <select id="display-perpage" class="form-input">
+            <option value="10">10件</option>
+            <option value="20">20件</option>
+            <option value="50">50件</option>
+            <option value="100">100件</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">デフォルトソート</label>
+          <select id="display-sort" class="form-input">
+            <option value="visit_date">診療日</option>
+            <option value="points">点数</option>
+            <option value="amount">金額</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">ソート順</label>
+          <select id="display-direction" class="form-input">
+            <option value="desc">降順 (新しい順)</option>
+            <option value="asc">昇順 (古い順)</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: CSV Import Settings -->
+    <section class="bg-white rounded-xl shadow-elevation-1 p-6 mb-6 animate-fade-in">
+      <div class="flex items-center gap-2 mb-5">
+        <i class="fa-solid fa-file-csv text-medical-600"></i>
+        <h3 class="text-lg font-semibold text-slate-900">CSVインポート設定</h3>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="form-label">文字エンコーディング</label>
+          <select id="csv-encoding" class="form-input">
+            <option value="UTF-8">UTF-8</option>
+            <option value="Shift_JIS">Shift_JIS</option>
+          </select>
+        </div>
+        <div>
+          <label class="form-label">区切り文字</label>
+          <select id="csv-delimiter" class="form-input">
+            <option value=",">カンマ (,)</option>
+            <option value="&#9;">タブ</option>
+            <option value=";">セミコロン (;)</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <label class="flex items-center gap-2 cursor-pointer py-2.5">
+            <input type="checkbox" id="csv-header" checked class="w-4 h-4 rounded border-slate-300 text-medical-600 focus:ring-medical-500">
+            <span class="text-sm text-slate-700">1行目をヘッダーとして使用</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row gap-3 justify-end">
+      <button onclick="resetSettings()" class="px-6 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+        <i class="fa-solid fa-rotate-left mr-1.5"></i>初期値に戻す
+      </button>
+      <button onclick="saveAllSettings()" class="px-6 py-2.5 bg-medical-600 text-white rounded-lg text-sm font-medium hover:bg-medical-700 transition-colors">
+        <i class="fa-solid fa-floppy-disk mr-1.5"></i>設定を保存
+      </button>
+    </div>
+
+  </main>
+
+  <footer class="mt-12 py-6 border-t border-slate-200">
+    <p class="text-center text-sm text-slate-400">Clinic Board &copy; 2026</p>
+  </footer>
+
+  <script src="shared/mock-data.js"></script>
+  <script src="shared/common.js"></script>
+  <script src="shared/header.js"></script>
+
+  <script>
+    // ===== Init =====
+    document.addEventListener('DOMContentLoaded', function () {
+      loadCustomDepartments();
+      loadSettingsToForm();
+      renderDepartmentList();
+    });
+
+    // ===== Load settings into form =====
+    function loadSettingsToForm() {
+      // Clinic info
+      const clinic = JSON.parse(localStorage.getItem('clinicSettings') || '{}');
+      document.getElementById('clinic-name').value = clinic.name || '';
+      document.getElementById('clinic-postal').value = clinic.postal || '';
+      document.getElementById('clinic-phone').value = clinic.phone || '';
+      document.getElementById('clinic-address').value = clinic.address || '';
+      document.getElementById('clinic-fax').value = clinic.fax || '';
+      document.getElementById('clinic-director').value = clinic.director || '';
+      document.getElementById('clinic-code').value = clinic.code || '';
+
+      // Display settings
+      const display = loadDisplaySettings();
+      document.getElementById('display-perpage').value = display.perPage;
+      document.getElementById('display-sort').value = display.sortColumn;
+      document.getElementById('display-direction').value = display.sortDirection;
+
+      // CSV settings
+      const csv = JSON.parse(localStorage.getItem('csvSettings') || '{}');
+      document.getElementById('csv-encoding').value = csv.encoding || 'UTF-8';
+      document.getElementById('csv-delimiter').value = csv.delimiter || ',';
+      document.getElementById('csv-header').checked = csv.hasHeader !== false;
+    }
+
+    // ===== Department Management =====
+    function renderDepartmentList() {
+      const container = document.getElementById('dept-list');
+      const entries = Object.entries(DEPARTMENTS);
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-400 py-3">診療科が登録されていません</p>';
+        return;
+      }
+
+      container.innerHTML = entries.map(function (entry) {
+        const id = entry[0];
+        const name = entry[1];
+        return `
+          <div class="dept-item border border-slate-100 rounded-lg">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-stethoscope text-xs text-slate-400"></i>
+              <span class="text-sm font-medium text-slate-700">${name}</span>
+            </div>
+            <button onclick="removeDepartment('${id}')" class="p-1.5 text-slate-400 hover:text-red-500 rounded transition-colors" title="削除">
+              <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function addDepartment() {
+      const input = document.getElementById('new-dept-name');
+      const name = input.value.trim();
+      if (!name) return;
+
+      // Find next available ID
+      const ids = Object.keys(DEPARTMENTS).map(Number);
+      const nextId = ids.length > 0 ? Math.max.apply(null, ids) + 1 : 1;
+
+      DEPARTMENTS[nextId] = name;
+      input.value = '';
+      renderDepartmentList();
+      showToast(name + ' を追加しました');
+    }
+
+    function removeDepartment(id) {
+      const name = DEPARTMENTS[id];
+      if (!confirm(name + ' を削除してもよろしいですか？')) return;
+
+      delete DEPARTMENTS[id];
+      renderDepartmentList();
+      showToast(name + ' を削除しました', 'info');
+    }
+
+    // Enter key for department input
+    document.getElementById('new-dept-name').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addDepartment();
+      }
+    });
+
+    // ===== Save All Settings =====
+    function saveAllSettings() {
+      // Clinic info
+      const clinicSettings = {
+        name: document.getElementById('clinic-name').value,
+        postal: document.getElementById('clinic-postal').value,
+        phone: document.getElementById('clinic-phone').value,
+        address: document.getElementById('clinic-address').value,
+        fax: document.getElementById('clinic-fax').value,
+        director: document.getElementById('clinic-director').value,
+        code: document.getElementById('clinic-code').value,
+      };
+      localStorage.setItem('clinicSettings', JSON.stringify(clinicSettings));
+
+      // Departments
+      localStorage.setItem('customDepartments', JSON.stringify(DEPARTMENTS));
+
+      // Display settings
+      const displaySettings = {
+        perPage: parseInt(document.getElementById('display-perpage').value),
+        sortColumn: document.getElementById('display-sort').value,
+        sortDirection: document.getElementById('display-direction').value,
+      };
+      localStorage.setItem('displaySettings', JSON.stringify(displaySettings));
+
+      // CSV settings
+      const csvSettings = {
+        encoding: document.getElementById('csv-encoding').value,
+        delimiter: document.getElementById('csv-delimiter').value,
+        hasHeader: document.getElementById('csv-header').checked,
+      };
+      localStorage.setItem('csvSettings', JSON.stringify(csvSettings));
+
+      showToast('設定を保存しました');
+    }
+
+    // ===== Reset Settings =====
+    function resetSettings() {
+      if (!confirm('全ての設定を初期値に戻してもよろしいですか？')) return;
+
+      localStorage.removeItem('clinicSettings');
+      localStorage.removeItem('customDepartments');
+      localStorage.removeItem('displaySettings');
+      localStorage.removeItem('csvSettings');
+
+      // Reset DEPARTMENTS to original
+      Object.keys(DEPARTMENTS).forEach(function (k) { delete DEPARTMENTS[k]; });
+      Object.assign(DEPARTMENTS, {
+        1: '内科', 2: '外科', 3: '整形外科', 4: '皮膚科',
+        5: '眼科', 6: '耳鼻咽喉科', 7: '小児科', 8: '産婦人科',
+      });
+
+      loadSettingsToForm();
+      renderDepartmentList();
+      showToast('設定を初期値に戻しました', 'info');
+    }
+  </script>
+</body>
+</html>

@@ -170,15 +170,22 @@
 
   <script>
     // ===== State =====
-    let allData = [...MOCK_RECEIPTS];
+    let allData = [];
     let filteredData = [];
     let currentPage = 1;
-    const perPage = 10;
+    let perPage = 10;
     let sortColumn = 'visit_date';
     let sortDirection = 'desc';
 
     // ===== Init =====
     document.addEventListener('DOMContentLoaded', function () {
+      loadCustomDepartments();
+      var ds = loadDisplaySettings();
+      perPage = ds.perPage;
+      sortColumn = ds.sortColumn;
+      sortDirection = ds.sortDirection;
+      allData = loadReceiptData();
+
       populateDepartmentFilter();
       setupEventListeners();
       applyFilters();
@@ -437,6 +444,7 @@
           }
 
           allData = records;
+          saveReceiptData(allData);
           currentPage = 1;
           applyFilters();
           updateSummaryCards();

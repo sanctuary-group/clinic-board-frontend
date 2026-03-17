@@ -112,3 +112,127 @@ function debounce(fn, delay) {
     timer = setTimeout(() => fn.apply(this, args), delay);
   };
 }
+
+// localStorageからカスタム診療科を読み込み
+function loadCustomDepartments() {
+  const saved = localStorage.getItem('customDepartments');
+  if (saved) {
+    try {
+      const custom = JSON.parse(saved);
+      Object.keys(DEPARTMENTS).forEach(function (k) { delete DEPARTMENTS[k]; });
+      Object.assign(DEPARTMENTS, custom);
+    } catch (e) { /* ignore */ }
+  }
+}
+
+// レセプトID自動生成
+function generateReceiptId(existingData) {
+  const year = new Date().getFullYear();
+  let maxNum = 0;
+  existingData.forEach(function (r) {
+    const match = (r.id || '').match(/R-\d{4}-(\d+)/);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (num > maxNum) maxNum = num;
+    }
+  });
+  return 'R-' + year + '-' + String(maxNum + 1).padStart(4, '0');
+}
+
+// localStorage からレセプトデータを読み込み (なければMOCK_RECEIPTSを返す)
+function loadReceiptData() {
+  const saved = localStorage.getItem('receiptData');
+  if (saved) {
+    try { return JSON.parse(saved); } catch (e) { /* ignore */ }
+  }
+  return [...MOCK_RECEIPTS];
+}
+
+// レセプトデータをlocalStorageに保存
+function saveReceiptData(data) {
+  localStorage.setItem('receiptData', JSON.stringify(data));
+}
+
+// 表示設定を読み込み
+function loadDisplaySettings() {
+  const defaults = { perPage: 10, sortColumn: 'visit_date', sortDirection: 'desc' };
+  const saved = localStorage.getItem('displaySettings');
+  if (saved) {
+    try { return Object.assign(defaults, JSON.parse(saved)); } catch (e) { /* ignore */ }
+  }
+  return defaults;
+}
+
+// トースト通知
+function showToast(message, type) {
+  type = type || 'success';
+  let container = document.querySelector('.toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  const icons = { success: 'fa-circle-check', error: 'fa-circle-xmark', info: 'fa-circle-info' };
+  toast.innerHTML = '<i class="fa-solid ' + (icons[type] || icons.info) + '"></i> ' + message;
+  container.appendChild(toast);
+
+  requestAnimationFrame(function () {
+    toast.classList.add('show');
+  });
+
+  setTimeout(function () {
+    toast.classList.remove('show');
+    setTimeout(function () { toast.remove(); }, 300);
+  }, 2500);
+}
+
+// モーダル開閉
+function openModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+}
+
+// CSVエクスポート
+function exportToCSV(data, filename) {
+  filename = filename || 'receipts.csv';
+  const headers = ['患者ID', '患者名', '診療日', '診療科', '病名', '保険種別', '点数', '金額', 'ステータス'];
+  const rows = data.map(function (r) {
+    return [
+      r.patient_id,
+      r.patient_name,
+      r.visit_date,
+      getDepartmentName(r.department_id),
+      r.diagnosis,
+      r.insurance_type,
+      r.points,
+      r.amount,
+      r.status,
+    ].map(function (v) {
+      const s = String(v || '');
+      return s.includes(',') ? '"' + s + '"' : s;
+    }).join(',');
+  });
+
+  const csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

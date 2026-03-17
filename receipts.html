@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>クリニックボード - レセプト管理</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="shared/tailwind-config.js"></script>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="shared/clinic-board.css">
+</head>
+<body class="font-body text-slate-900 min-h-screen">
+
+  <div id="app-header"></div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Page Title Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+          <i class="fa-solid fa-file-medical text-blue-600"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-900">レセプト管理</h2>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="exportToCSV(filteredData, 'receipts_export.csv')" class="px-4 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors">
+          <i class="fa-solid fa-download mr-1.5"></i>CSVエクスポート
+        </button>
+        <button onclick="openEditModal(null)" class="px-4 py-2.5 bg-medical-600 text-white rounded-lg text-sm font-medium hover:bg-medical-700 transition-colors">
+          <i class="fa-solid fa-plus mr-1.5"></i>新規登録
+        </button>
+      </div>
+    </div>
+
+    <!-- Search & Filter Bar -->
+    <section class="bg-white rounded-xl shadow-elevation-1 p-4 mb-6 animate-fade-in">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <!-- Search -->
+        <div class="relative sm:col-span-2 lg:col-span-1">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input type="text" id="search-input" placeholder="患者ID、患者名、病名で検索..."
+            class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 transition-colors">
+        </div>
+        <!-- Department -->
+        <select id="filter-department" class="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 bg-white">
+          <option value="">全診療科</option>
+        </select>
+        <!-- Status -->
+        <select id="filter-status" class="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 bg-white">
+          <option value="">全ステータス</option>
+          <option value="確定">確定</option>
+          <option value="保留">保留</option>
+          <option value="返戻">返戻</option>
+        </select>
+        <!-- Insurance -->
+        <select id="filter-insurance" class="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 bg-white">
+          <option value="">全保険種別</option>
+          <option value="社保">社保</option>
+          <option value="国保">国保</option>
+          <option value="後期高齢">後期高齢</option>
+        </select>
+      </div>
+      <!-- Date range -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-slate-500 flex-shrink-0">開始日</label>
+          <input type="date" id="filter-date-from" class="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 bg-white">
+        </div>
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-slate-500 flex-shrink-0">終了日</label>
+          <input type="date" id="filter-date-to" class="flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 bg-white">
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Table -->
+    <section class="bg-white rounded-xl shadow-elevation-1 overflow-hidden animate-fade-in">
+      <div class="table-container overflow-x-auto">
+        <table class="data-table w-full min-w-[1050px]">
+          <thead>
+            <tr class="border-b border-slate-200 bg-slate-50/80">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">患者ID</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">患者名</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider sortable" data-sort="visit_date">
+                診療日 <i class="fa-solid fa-sort sort-icon text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">診療科</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">病名</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">保険種別</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider sortable" data-sort="points">
+                点数 <i class="fa-solid fa-sort sort-icon text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider sortable" data-sort="amount">
+                金額 <i class="fa-solid fa-sort sort-icon text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">ステータス</th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">操作</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-slate-100">
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination" class="flex flex-col sm:flex-row items-center justify-between px-4 py-3 border-t border-slate-200 gap-3">
+        <p id="pagination-info" class="text-sm text-slate-500"></p>
+        <div id="pagination-buttons" class="flex items-center gap-1"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Detail Modal -->
+  <div id="detail-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('detail-modal')">
+    <div class="modal-content bg-white rounded-xl shadow-elevation-3 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <h3 class="text-lg font-semibold text-slate-900"><i class="fa-solid fa-file-medical text-medical-600 mr-2"></i>レセプト詳細</h3>
+        <button onclick="closeModal('detail-modal')" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="detail-body" class="p-6">
+      </div>
+      <div class="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+        <button onclick="closeModal('detail-modal')" class="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">閉じる</button>
+        <button id="detail-edit-btn" class="px-4 py-2 text-sm font-medium text-white bg-medical-600 rounded-lg hover:bg-medical-700 transition-colors">
+          <i class="fa-solid fa-pen-to-square mr-1"></i>編集
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('edit-modal')">
+    <div class="modal-content bg-white rounded-xl shadow-elevation-3 w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+        <h3 id="edit-modal-title" class="text-lg font-semibold text-slate-900">新規レセプト登録</h3>
+        <button onclick="closeModal('edit-modal')" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="edit-id">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">患者ID <span class="text-red-400">*</span></label>
+            <input type="text" id="edit-patient-id" class="form-input" required placeholder="例: P001">
+          </div>
+          <div>
+            <label class="form-label">患者名 <span class="text-red-400">*</span></label>
+            <input type="text" id="edit-patient-name" class="form-input" required placeholder="例: 山田 太郎">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">診療日 <span class="text-red-400">*</span></label>
+            <input type="date" id="edit-visit-date" class="form-input" required>
+          </div>
+          <div>
+            <label class="form-label">診療科</label>
+            <select id="edit-department" class="form-input">
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">病名 <span class="text-red-400">*</span></label>
+          <input type="text" id="edit-diagnosis" class="form-input" required placeholder="例: 急性上気道炎">
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="form-label">保険種別</label>
+            <select id="edit-insurance" class="form-input">
+              <option value="社保">社保</option>
+              <option value="国保">国保</option>
+              <option value="後期高齢">後期高齢</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">点数 <span class="text-red-400">*</span></label>
+            <input type="number" id="edit-points" class="form-input" required min="0" placeholder="0">
+          </div>
+          <div>
+            <label class="form-label">金額</label>
+            <input type="number" id="edit-amount" class="form-input" min="0" placeholder="自動計算">
+          </div>
+        </div>
+        <div>
+          <label class="form-label">ステータス</label>
+          <select id="edit-status" class="form-input">
+            <option value="確定">確定</option>
+            <option value="保留">保留</option>
+            <option value="返戻">返戻</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 px-6 py-4 border-t border-slate-100">
+        <button onclick="closeModal('edit-modal')" class="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">キャンセル</button>
+        <button onclick="saveReceipt()" class="px-4 py-2 text-sm font-medium text-white bg-medical-600 rounded-lg hover:bg-medical-700 transition-colors">
+          <i class="fa-solid fa-floppy-disk mr-1"></i>保存
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div id="delete-modal" class="modal-overlay" onclick="if(event.target===this)closeModal('delete-modal')">
+    <div class="modal-content bg-white rounded-xl shadow-elevation-3 w-full max-w-sm mx-4">
+      <div class="p-6 text-center">
+        <div class="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+          <i class="fa-solid fa-triangle-exclamation text-red-500 text-2xl"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-900 mb-2">レセプトの削除</h3>
+        <p id="delete-message" class="text-sm text-slate-500 mb-6"></p>
+        <div class="flex gap-2 justify-center">
+          <button onclick="closeModal('delete-modal')" class="px-5 py-2.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">キャンセル</button>
+          <button id="delete-confirm-btn" class="px-5 py-2.5 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors">
+            <i class="fa-solid fa-trash-can mr-1"></i>削除
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="mt-12 py-6 border-t border-slate-200">
+    <p class="text-center text-sm text-slate-400">Clinic Board &copy; 2026</p>
+  </footer>
+
+  <script src="shared/mock-data.js"></script>
+  <script src="shared/common.js"></script>
+  <script src="shared/header.js"></script>
+
+  <script>
+    // ===== State =====
+    let allData = [];
+    let filteredData = [];
+    let currentPage = 1;
+    let perPage = 10;
+    let sortColumn = 'visit_date';
+    let sortDirection = 'desc';
+    let editingId = null;
+
+    // ===== Init =====
+    document.addEventListener('DOMContentLoaded', function () {
+      loadCustomDepartments();
+
+      // Load display settings
+      const ds = loadDisplaySettings();
+      perPage = ds.perPage;
+      sortColumn = ds.sortColumn;
+      sortDirection = ds.sortDirection;
+
+      // Load data
+      allData = loadReceiptData();
+
+      populateFilters();
+      setupEventListeners();
+      applyFilters();
+    });
+
+    function populateFilters() {
+      const deptSelect = document.getElementById('filter-department');
+      for (var _k in DEPARTMENTS) {
+        var opt = document.createElement('option');
+        opt.value = _k;
+        opt.textContent = DEPARTMENTS[_k];
+        deptSelect.appendChild(opt);
+      }
+
+      // Edit modal department select
+      var editDeptSelect = document.getElementById('edit-department');
+      for (var _k2 in DEPARTMENTS) {
+        var opt2 = document.createElement('option');
+        opt2.value = _k2;
+        opt2.textContent = DEPARTMENTS[_k2];
+        editDeptSelect.appendChild(opt2);
+      }
+    }
+
+    function setupEventListeners() {
+      document.getElementById('search-input').addEventListener('input', debounce(function () {
+        currentPage = 1;
+        applyFilters();
+      }, 300));
+
+      ['filter-department', 'filter-status', 'filter-insurance'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', function () {
+          currentPage = 1;
+          applyFilters();
+        });
+      });
+
+      ['filter-date-from', 'filter-date-to'].forEach(function (id) {
+        document.getElementById(id).addEventListener('change', function () {
+          currentPage = 1;
+          applyFilters();
+        });
+      });
+
+      document.querySelectorAll('.sortable').forEach(function (th) {
+        th.addEventListener('click', function () {
+          handleSort(this.dataset.sort);
+        });
+      });
+
+      // Auto-calc amount from points
+      document.getElementById('edit-points').addEventListener('input', function () {
+        var amountInput = document.getElementById('edit-amount');
+        if (!amountInput.dataset.manual) {
+          amountInput.value = (parseInt(this.value) || 0) * 10;
+        }
+      });
+      document.getElementById('edit-amount').addEventListener('input', function () {
+        this.dataset.manual = '1';
+      });
+    }
+
+    // ===== Filters =====
+    function applyFilters() {
+      var search = document.getElementById('search-input').value.toLowerCase();
+      var dept = document.getElementById('filter-department').value;
+      var status = document.getElementById('filter-status').value;
+      var insurance = document.getElementById('filter-insurance').value;
+      var dateFrom = document.getElementById('filter-date-from').value;
+      var dateTo = document.getElementById('filter-date-to').value;
+
+      filteredData = allData.filter(function (row) {
+        if (search) {
+          var match = (row.patient_id || '').toLowerCase().includes(search)
+            || (row.patient_name || '').toLowerCase().includes(search)
+            || (row.diagnosis || '').toLowerCase().includes(search);
+          if (!match) return false;
+        }
+        if (dept && row.department_id !== parseInt(dept)) return false;
+        if (status && row.status !== status) return false;
+        if (insurance && row.insurance_type !== insurance) return false;
+        if (dateFrom && row.visit_date < dateFrom) return false;
+        if (dateTo && row.visit_date > dateTo) return false;
+        return true;
+      });
+
+      sortData();
+      renderTable();
+      renderPagination();
+    }
+
+    // ===== Sort =====
+    function handleSort(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortColumn = column;
+        sortDirection = 'asc';
+      }
+
+      document.querySelectorAll('.sortable').forEach(function (th) {
+        th.classList.remove('sort-active');
+        th.querySelector('.sort-icon').className = 'fa-solid fa-sort sort-icon text-xs';
+      });
+      var activeTh = document.querySelector('[data-sort="' + column + '"]');
+      if (activeTh) {
+        activeTh.classList.add('sort-active');
+        activeTh.querySelector('.sort-icon').className = 'fa-solid fa-sort-' + (sortDirection === 'asc' ? 'up' : 'down') + ' sort-icon text-xs';
+      }
+
+      sortData();
+      renderTable();
+      renderPagination();
+    }
+
+    function sortData() {
+      filteredData.sort(function (a, b) {
+        var valA = a[sortColumn], valB = b[sortColumn];
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return sortDirection === 'asc' ? valA - valB : valB - valA;
+        }
+        valA = String(valA || ''); valB = String(valB || '');
+        return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      });
+    }
+
+    // ===== Render Table =====
+    function renderTable() {
+      var tbody = document.getElementById('table-body');
+      var start = (currentPage - 1) * perPage;
+      var pageData = filteredData.slice(start, start + perPage);
+
+      if (pageData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-state"><i class="fa-solid fa-inbox text-3xl text-slate-300 mb-3 block"></i><p class="text-slate-400">データがありません</p></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = pageData.map(function (row) {
+        return '<tr class="hover:bg-slate-50/80">' +
+          '<td class="px-4 py-3 text-sm font-mono text-slate-500">' + row.patient_id + '</td>' +
+          '<td class="px-4 py-3 text-sm font-medium text-slate-900">' + row.patient_name + '</td>' +
+          '<td class="px-4 py-3 text-sm text-slate-600">' + formatDate(row.visit_date) + '</td>' +
+          '<td class="px-4 py-3 text-sm text-slate-600">' + getDepartmentName(row.department_id) + '</td>' +
+          '<td class="px-4 py-3 text-sm text-slate-600">' + row.diagnosis + '</td>' +
+          '<td class="px-4 py-3 text-sm">' + getInsuranceBadge(row.insurance_type) + '</td>' +
+          '<td class="px-4 py-3 text-sm text-right font-mono text-slate-700">' + formatPoints(row.points) + '</td>' +
+          '<td class="px-4 py-3 text-sm text-right font-mono font-medium text-slate-900">' + formatCurrency(row.amount) + '</td>' +
+          '<td class="px-4 py-3 text-sm text-center">' + getStatusBadge(row.status) + '</td>' +
+          '<td class="px-4 py-3 text-sm text-center"><div class="flex items-center justify-center gap-1">' +
+            '<button onclick="openDetailModal(\'' + row.id + '\')" class="action-btn text-cyan-600 hover:bg-cyan-50" title="詳細"><i class="fa-solid fa-eye text-xs"></i></button>' +
+            '<button onclick="openEditModal(\'' + row.id + '\')" class="action-btn text-blue-600 hover:bg-blue-50" title="編集"><i class="fa-solid fa-pen-to-square text-xs"></i></button>' +
+            '<button onclick="openDeleteConfirm(\'' + row.id + '\')" class="action-btn text-red-500 hover:bg-red-50" title="削除"><i class="fa-solid fa-trash-can text-xs"></i></button>' +
+          '</div></td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    // ===== Pagination =====
+    function renderPagination() {
+      var total = filteredData.length;
+      var totalPages = Math.ceil(total / perPage);
+      var start = (currentPage - 1) * perPage + 1;
+      var end = Math.min(currentPage * perPage, total);
+
+      var infoEl = document.getElementById('pagination-info');
+      infoEl.textContent = total === 0 ? '0 件' : '全 ' + total + ' 件中 ' + start + '〜' + end + ' 件表示';
+
+      var btnContainer = document.getElementById('pagination-buttons');
+      if (totalPages <= 1) { btnContainer.innerHTML = ''; return; }
+
+      var html = '<button class="page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200" onclick="goToPage(' + (currentPage - 1) + ')" ' + (currentPage === 1 ? 'disabled' : '') + '><i class="fa-solid fa-chevron-left text-xs"></i></button>';
+
+      var pages = getPageNumbers(currentPage, totalPages);
+      pages.forEach(function (p) {
+        if (p === '...') {
+          html += '<span class="px-2 py-1.5 text-sm text-slate-400">...</span>';
+        } else {
+          html += '<button class="page-btn px-3 py-1.5 rounded-lg text-sm font-medium ' + (p === currentPage ? 'active' : 'text-slate-600 border border-slate-200') + '" onclick="goToPage(' + p + ')">' + p + '</button>';
+        }
+      });
+
+      html += '<button class="page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200" onclick="goToPage(' + (currentPage + 1) + ')" ' + (currentPage === totalPages ? 'disabled' : '') + '><i class="fa-solid fa-chevron-right text-xs"></i></button>';
+
+      btnContainer.innerHTML = html;
+    }
+
+    function getPageNumbers(current, total) {
+      if (total <= 7) return Array.from({ length: total }, function (_, i) { return i + 1; });
+      var pages = [1];
+      if (current > 3) pages.push('...');
+      for (var i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) pages.push(i);
+      if (current < total - 2) pages.push('...');
+      pages.push(total);
+      return pages;
+    }
+
+    function goToPage(page) {
+      var totalPages = Math.ceil(filteredData.length / perPage);
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderTable();
+      renderPagination();
+      document.querySelector('.data-table').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ===== Detail Modal =====
+    function openDetailModal(id) {
+      var row = allData.find(function (r) { return r.id === id; });
+      if (!row) return;
+
+      var body = document.getElementById('detail-body');
+      body.innerHTML =
+        '<div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">' +
+          detailField('レセプトID', row.id) +
+          detailField('患者ID', row.patient_id) +
+          detailField('患者名', row.patient_name) +
+          detailField('診療日', formatDate(row.visit_date)) +
+          detailField('診療科', getDepartmentName(row.department_id)) +
+          detailField('病名', row.diagnosis) +
+          detailField('保険種別', getInsuranceBadge(row.insurance_type)) +
+          detailField('点数', formatPoints(row.points)) +
+          detailField('金額', '<span class="text-lg font-bold">' + formatCurrency(row.amount) + '</span>') +
+          detailField('ステータス', getStatusBadge(row.status)) +
+        '</div>';
+
+      document.getElementById('detail-edit-btn').onclick = function () {
+        closeModal('detail-modal');
+        openEditModal(id);
+      };
+
+      openModal('detail-modal');
+    }
+
+    function detailField(label, value) {
+      return '<div><p class="text-xs text-slate-400 uppercase tracking-wider mb-1">' + label + '</p><p class="text-sm font-medium text-slate-900">' + value + '</p></div>';
+    }
+
+    // ===== Edit Modal =====
+    function openEditModal(id) {
+      editingId = id;
+      document.getElementById('edit-amount').dataset.manual = '';
+
+      if (id) {
+        var row = allData.find(function (r) { return r.id === id; });
+        if (!row) return;
+        document.getElementById('edit-modal-title').textContent = 'レセプト編集';
+        document.getElementById('edit-id').value = row.id;
+        document.getElementById('edit-patient-id').value = row.patient_id;
+        document.getElementById('edit-patient-name').value = row.patient_name;
+        document.getElementById('edit-visit-date').value = row.visit_date;
+        document.getElementById('edit-department').value = row.department_id;
+        document.getElementById('edit-diagnosis').value = row.diagnosis;
+        document.getElementById('edit-insurance').value = row.insurance_type;
+        document.getElementById('edit-points').value = row.points;
+        document.getElementById('edit-amount').value = row.amount;
+        document.getElementById('edit-status').value = row.status;
+      } else {
+        document.getElementById('edit-modal-title').textContent = '新規レセプト登録';
+        document.getElementById('edit-id').value = '';
+        document.getElementById('edit-patient-id').value = '';
+        document.getElementById('edit-patient-name').value = '';
+        document.getElementById('edit-visit-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('edit-department').value = Object.keys(DEPARTMENTS)[0] || '';
+        document.getElementById('edit-diagnosis').value = '';
+        document.getElementById('edit-insurance').value = '社保';
+        document.getElementById('edit-points').value = '';
+        document.getElementById('edit-amount').value = '';
+        document.getElementById('edit-status').value = '確定';
+      }
+
+      openModal('edit-modal');
+    }
+
+    function saveReceipt() {
+      var patientId = document.getElementById('edit-patient-id').value.trim();
+      var patientName = document.getElementById('edit-patient-name').value.trim();
+      var visitDate = document.getElementById('edit-visit-date').value;
+      var diagnosis = document.getElementById('edit-diagnosis').value.trim();
+      var points = parseInt(document.getElementById('edit-points').value) || 0;
+
+      if (!patientId || !patientName || !visitDate || !diagnosis) {
+        showToast('必須項目を入力してください', 'error');
+        return;
+      }
+
+      var record = {
+        patient_id: patientId,
+        patient_name: patientName,
+        visit_date: visitDate,
+        department_id: parseInt(document.getElementById('edit-department').value),
+        diagnosis: diagnosis,
+        insurance_type: document.getElementById('edit-insurance').value,
+        points: points,
+        amount: parseInt(document.getElementById('edit-amount').value) || points * 10,
+        status: document.getElementById('edit-status').value,
+      };
+
+      if (editingId) {
+        // Update
+        var idx = allData.findIndex(function (r) { return r.id === editingId; });
+        if (idx >= 0) {
+          record.id = editingId;
+          allData[idx] = record;
+        }
+        showToast('レセプトを更新しました');
+      } else {
+        // Add
+        record.id = generateReceiptId(allData);
+        allData.unshift(record);
+        showToast('レセプトを登録しました');
+      }
+
+      saveReceiptData(allData);
+      closeModal('edit-modal');
+      currentPage = 1;
+      applyFilters();
+    }
+
+    // ===== Delete =====
+    var deleteTargetId = null;
+
+    function openDeleteConfirm(id) {
+      var row = allData.find(function (r) { return r.id === id; });
+      if (!row) return;
+      deleteTargetId = id;
+
+      document.getElementById('delete-message').textContent =
+        row.id + ' (' + row.patient_name + ') を削除してもよろしいですか？この操作は取り消せません。';
+
+      document.getElementById('delete-confirm-btn').onclick = function () {
+        deleteReceipt();
+      };
+
+      openModal('delete-modal');
+    }
+
+    function deleteReceipt() {
+      if (!deleteTargetId) return;
+
+      allData = allData.filter(function (r) { return r.id !== deleteTargetId; });
+      saveReceiptData(allData);
+      closeModal('delete-modal');
+      deleteTargetId = null;
+
+      showToast('レセプトを削除しました', 'info');
+      applyFilters();
+    }
+  </script>
+</body>
+</html>
