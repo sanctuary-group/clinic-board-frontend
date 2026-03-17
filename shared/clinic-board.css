@@ -18,12 +18,12 @@ body {
 /* Sidebar layout */
 .app-main {
   padding-top: 3.5rem; /* mobile topbar height */
-  transition: margin-left 0.2s ease;
 }
 
 @media (min-width: 1024px) {
   .app-main {
-    margin-left: 15rem; /* sidebar width: w-60 = 15rem */
+    margin-left: 15rem; /* sidebar width */
+    margin-right: auto;
     padding-top: 0;
   }
   .sidebar-topbar {
