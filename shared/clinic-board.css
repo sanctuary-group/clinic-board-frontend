@@ -1,0 +1,149 @@
+:root {
+  --medical-primary: #0891b2;
+  --medical-light: #ecfeff;
+  --medical-dark: #155e75;
+  --medical-accent: #06b6d4;
+  --surface-bg: #f8fafc;
+  --surface-card: #ffffff;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+}
+
+body {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+  min-height: 100vh;
+}
+
+/* Upload Dropzone */
+.dropzone {
+  transition: all 0.3s ease;
+}
+
+.dropzone.drag-over {
+  border-color: var(--medical-primary);
+  background-color: var(--medical-light);
+  transform: scale(1.01);
+}
+
+.dropzone.drag-over .dropzone-icon {
+  transform: scale(1.15);
+  color: var(--medical-primary);
+}
+
+.dropzone-icon {
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+/* Table */
+.data-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.data-table tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.data-table th.sortable:hover {
+  color: var(--medical-primary);
+}
+
+.data-table th .sort-icon {
+  opacity: 0.3;
+  transition: opacity 0.15s ease;
+  margin-left: 4px;
+}
+
+.data-table th.sort-active .sort-icon {
+  opacity: 1;
+  color: var(--medical-primary);
+}
+
+/* Card hover lift */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.05), 0 4px 6px rgba(0, 0, 0, 0.03);
+}
+
+/* Pagination */
+.page-btn {
+  transition: all 0.15s ease;
+}
+
+.page-btn:hover:not(.active):not(:disabled) {
+  background-color: var(--medical-light);
+  color: var(--medical-primary);
+}
+
+.page-btn.active {
+  background-color: var(--medical-primary);
+  color: #ffffff;
+}
+
+.page-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+}
+
+/* Scrollbar */
+.table-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animation delay helpers */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+
+/* Upload success flash */
+@keyframes successFlash {
+  0% { background-color: #dcfce7; }
+  100% { background-color: transparent; }
+}
+
+.upload-success {
+  animation: successFlash 1.5s ease-out forwards;
+}
+
+/* Empty state */
+.empty-state {
+  padding: 3rem 1rem;
+  text-align: center;
+  color: var(--text-muted);
+}

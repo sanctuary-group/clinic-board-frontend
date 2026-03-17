@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>クリニックボード - レセプト管理ダッシュボード</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="shared/tailwind-config.js"></script>
+
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="shared/clinic-board.css">
+</head>
+<body class="font-body text-slate-900 min-h-screen">
+
+  <!-- Header -->
+  <div id="app-header"></div>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- Summary Cards -->
+    <section id="summary-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+      <!-- 患者数 -->
+      <div class="bg-white rounded-xl shadow-elevation-1 p-4 sm:p-6 card-hover animate-fade-in-up delay-100 aspect-square flex flex-col items-center justify-center text-center sm:aspect-auto sm:flex-row sm:text-left">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-cyan-50 flex items-center justify-center flex-shrink-0 mb-2 sm:mb-0 sm:mr-4">
+          <i class="fa-solid fa-user-group text-cyan-600 text-base sm:text-lg"></i>
+        </div>
+        <div>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">患者数</p>
+          <p id="stat-patients" class="text-xl sm:text-2xl font-bold text-slate-900">--</p>
+        </div>
+      </div>
+
+      <!-- 請求件数 -->
+      <div class="bg-white rounded-xl shadow-elevation-1 p-4 sm:p-6 card-hover animate-fade-in-up delay-200 aspect-square flex flex-col items-center justify-center text-center sm:aspect-auto sm:flex-row sm:text-left">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0 mb-2 sm:mb-0 sm:mr-4">
+          <i class="fa-solid fa-file-medical text-blue-600 text-base sm:text-lg"></i>
+        </div>
+        <div>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">請求件数</p>
+          <p id="stat-claims" class="text-xl sm:text-2xl font-bold text-slate-900">--</p>
+        </div>
+      </div>
+
+      <!-- 合計金額 -->
+      <div class="bg-white rounded-xl shadow-elevation-1 p-4 sm:p-6 card-hover animate-fade-in-up delay-300 aspect-square flex flex-col items-center justify-center text-center sm:aspect-auto sm:flex-row sm:text-left">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0 mb-2 sm:mb-0 sm:mr-4">
+          <i class="fa-solid fa-yen-sign text-emerald-600 text-base sm:text-lg"></i>
+        </div>
+        <div>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">合計金額</p>
+          <p id="stat-revenue" class="text-xl sm:text-2xl font-bold text-slate-900">--</p>
+        </div>
+      </div>
+
+      <!-- 平均点数 -->
+      <div class="bg-white rounded-xl shadow-elevation-1 p-4 sm:p-6 card-hover animate-fade-in-up delay-400 aspect-square flex flex-col items-center justify-center text-center sm:aspect-auto sm:flex-row sm:text-left">
+        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0 mb-2 sm:mb-0 sm:mr-4">
+          <i class="fa-solid fa-chart-bar text-purple-600 text-base sm:text-lg"></i>
+        </div>
+        <div>
+          <p class="text-xs sm:text-sm text-slate-500 font-medium">平均点数</p>
+          <p id="stat-avg-points" class="text-xl sm:text-2xl font-bold text-slate-900">--</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- File Upload Area -->
+    <section class="mb-8 animate-fade-in">
+      <div id="dropzone" class="dropzone bg-white rounded-xl border-2 border-dashed border-slate-300 p-8 text-center cursor-pointer hover:border-medical-400 hover:bg-cyan-50/30">
+        <div class="dropzone-icon mb-3">
+          <i class="fa-solid fa-cloud-arrow-up text-4xl text-slate-400"></i>
+        </div>
+        <p class="text-slate-600 font-medium mb-1">CSVファイルをドラッグ&ドロップ</p>
+        <p class="text-sm text-slate-400 mb-4">または</p>
+        <label class="inline-flex items-center gap-2 px-5 py-2.5 bg-medical-600 text-white rounded-lg text-sm font-medium hover:bg-medical-700 transition-colors cursor-pointer">
+          <i class="fa-solid fa-folder-open"></i>
+          ファイルを選択
+          <input type="file" id="file-input" accept=".csv" class="hidden">
+        </label>
+        <p id="upload-status" class="text-sm text-slate-400 mt-3 hidden"></p>
+      </div>
+    </section>
+
+    <!-- Search & Filter Bar -->
+    <section class="bg-white rounded-xl shadow-elevation-1 p-4 mb-6 animate-fade-in">
+      <div class="flex flex-col sm:flex-row gap-3">
+        <!-- Search Input -->
+        <div class="relative flex-1">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+          <input
+            type="text"
+            id="search-input"
+            placeholder="患者ID、患者名、病名で検索..."
+            class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 transition-colors"
+          >
+        </div>
+
+        <!-- Department Filter -->
+        <select id="filter-department" class="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 bg-white">
+          <option value="">全診療科</option>
+        </select>
+
+        <!-- Status Filter -->
+        <select id="filter-status" class="px-4 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-medical-500/20 focus:border-medical-400 bg-white">
+          <option value="">全ステータス</option>
+          <option value="確定">確定</option>
+          <option value="保留">保留</option>
+          <option value="返戻">返戻</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Data Table -->
+    <section class="bg-white rounded-xl shadow-elevation-1 overflow-hidden animate-fade-in">
+      <div class="table-container overflow-x-auto">
+        <table class="data-table w-full min-w-[900px]">
+          <thead>
+            <tr class="border-b border-slate-200 bg-slate-50/80">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">患者ID</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">患者名</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider sortable" data-sort="visit_date">
+                診療日 <i class="fa-solid fa-sort sort-icon text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">診療科</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">病名</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">保険種別</th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider sortable" data-sort="points">
+                点数 <i class="fa-solid fa-sort sort-icon text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider sortable" data-sort="amount">
+                金額 <i class="fa-solid fa-sort sort-icon text-xs"></i>
+              </th>
+              <th class="px-4 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">ステータス</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-slate-100">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination" class="flex flex-col sm:flex-row items-center justify-between px-4 py-3 border-t border-slate-200 gap-3">
+        <p id="pagination-info" class="text-sm text-slate-500"></p>
+        <div id="pagination-buttons" class="flex items-center gap-1"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="mt-12 py-6 border-t border-slate-200">
+    <p class="text-center text-sm text-slate-400">Clinic Board &copy; 2026</p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="shared/mock-data.js"></script>
+  <script src="shared/common.js"></script>
+  <script src="shared/header.js"></script>
+
+  <script>
+    // ===== State =====
+    let allData = [...MOCK_RECEIPTS];
+    let filteredData = [];
+    let currentPage = 1;
+    const perPage = 10;
+    let sortColumn = 'visit_date';
+    let sortDirection = 'desc';
+
+    // ===== Init =====
+    document.addEventListener('DOMContentLoaded', function () {
+      populateDepartmentFilter();
+      setupEventListeners();
+      applyFilters();
+      updateSummaryCards();
+    });
+
+    function populateDepartmentFilter() {
+      const select = document.getElementById('filter-department');
+      for (const [id, name] of Object.entries(DEPARTMENTS)) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = name;
+        select.appendChild(opt);
+      }
+    }
+
+    function setupEventListeners() {
+      // Search
+      const searchInput = document.getElementById('search-input');
+      searchInput.addEventListener('input', debounce(function () {
+        currentPage = 1;
+        applyFilters();
+      }, 300));
+
+      // Filters
+      document.getElementById('filter-department').addEventListener('change', function () {
+        currentPage = 1;
+        applyFilters();
+      });
+      document.getElementById('filter-status').addEventListener('change', function () {
+        currentPage = 1;
+        applyFilters();
+      });
+
+      // Sort headers
+      document.querySelectorAll('.sortable').forEach(function (th) {
+        th.addEventListener('click', function () {
+          handleSort(this.dataset.sort);
+        });
+      });
+
+      // File upload
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+
+      dropzone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+      });
+      dropzone.addEventListener('dragleave', function () {
+        this.classList.remove('drag-over');
+      });
+      dropzone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.name.endsWith('.csv')) {
+          handleFileUpload(file);
+        }
+      });
+      fileInput.addEventListener('change', function () {
+        if (this.files[0]) {
+          handleFileUpload(this.files[0]);
+        }
+      });
+    }
+
+    // ===== Filters =====
+    function applyFilters() {
+      const search = document.getElementById('search-input').value.toLowerCase();
+      const dept = document.getElementById('filter-department').value;
+      const status = document.getElementById('filter-status').value;
+
+      filteredData = allData.filter(function (row) {
+        if (search) {
+          const match = (row.patient_id || '').toLowerCase().includes(search)
+            || (row.patient_name || '').toLowerCase().includes(search)
+            || (row.diagnosis || '').toLowerCase().includes(search);
+          if (!match) return false;
+        }
+        if (dept && row.department_id !== parseInt(dept)) return false;
+        if (status && row.status !== status) return false;
+        return true;
+      });
+
+      sortData();
+      renderTable();
+      renderPagination();
+    }
+
+    // ===== Sort =====
+    function handleSort(column) {
+      if (sortColumn === column) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortColumn = column;
+        sortDirection = 'asc';
+      }
+
+      // Update header icons
+      document.querySelectorAll('.sortable').forEach(function (th) {
+        th.classList.remove('sort-active');
+        const icon = th.querySelector('.sort-icon');
+        icon.className = 'fa-solid fa-sort sort-icon text-xs';
+      });
+      const activeTh = document.querySelector('[data-sort="' + column + '"]');
+      if (activeTh) {
+        activeTh.classList.add('sort-active');
+        const icon = activeTh.querySelector('.sort-icon');
+        icon.className = 'fa-solid fa-sort-' + (sortDirection === 'asc' ? 'up' : 'down') + ' sort-icon text-xs';
+      }
+
+      sortData();
+      renderTable();
+      renderPagination();
+    }
+
+    function sortData() {
+      filteredData.sort(function (a, b) {
+        let valA = a[sortColumn];
+        let valB = b[sortColumn];
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return sortDirection === 'asc' ? valA - valB : valB - valA;
+        }
+        valA = String(valA || '');
+        valB = String(valB || '');
+        return sortDirection === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      });
+    }
+
+    // ===== Render Table =====
+    function renderTable() {
+      const tbody = document.getElementById('table-body');
+      const start = (currentPage - 1) * perPage;
+      const end = start + perPage;
+      const pageData = filteredData.slice(start, end);
+
+      if (pageData.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="9" class="empty-state">
+              <i class="fa-solid fa-inbox text-3xl text-slate-300 mb-3 block"></i>
+              <p class="text-slate-400">データがありません</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = pageData.map(function (row) {
+        return `
+          <tr class="hover:bg-slate-50/80">
+            <td class="px-4 py-3 text-sm font-mono text-slate-500">${row.patient_id}</td>
+            <td class="px-4 py-3 text-sm font-medium text-slate-900">${row.patient_name}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${formatDate(row.visit_date)}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${getDepartmentName(row.department_id)}</td>
+            <td class="px-4 py-3 text-sm text-slate-600">${row.diagnosis}</td>
+            <td class="px-4 py-3 text-sm">${getInsuranceBadge(row.insurance_type)}</td>
+            <td class="px-4 py-3 text-sm text-right font-mono text-slate-700">${formatPoints(row.points)}</td>
+            <td class="px-4 py-3 text-sm text-right font-mono font-medium text-slate-900">${formatCurrency(row.amount)}</td>
+            <td class="px-4 py-3 text-sm text-center">${getStatusBadge(row.status)}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ===== Pagination =====
+    function renderPagination() {
+      const total = filteredData.length;
+      const totalPages = Math.ceil(total / perPage);
+      const start = (currentPage - 1) * perPage + 1;
+      const end = Math.min(currentPage * perPage, total);
+
+      // Info text
+      const infoEl = document.getElementById('pagination-info');
+      if (total === 0) {
+        infoEl.textContent = '0 件';
+      } else {
+        infoEl.textContent = `全 ${total} 件中 ${start}〜${end} 件表示`;
+      }
+
+      // Buttons
+      const btnContainer = document.getElementById('pagination-buttons');
+      if (totalPages <= 1) {
+        btnContainer.innerHTML = '';
+        return;
+      }
+
+      let html = '';
+
+      // Previous
+      html += `<button class="page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+        <i class="fa-solid fa-chevron-left text-xs"></i>
+      </button>`;
+
+      // Page numbers
+      const pages = getPageNumbers(currentPage, totalPages);
+      pages.forEach(function (p) {
+        if (p === '...') {
+          html += `<span class="px-2 py-1.5 text-sm text-slate-400">...</span>`;
+        } else {
+          html += `<button class="page-btn px-3 py-1.5 rounded-lg text-sm font-medium ${p === currentPage ? 'active' : 'text-slate-600 border border-slate-200'}" onclick="goToPage(${p})">${p}</button>`;
+        }
+      });
+
+      // Next
+      html += `<button class="page-btn px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 border border-slate-200" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+        <i class="fa-solid fa-chevron-right text-xs"></i>
+      </button>`;
+
+      btnContainer.innerHTML = html;
+    }
+
+    function getPageNumbers(current, total) {
+      if (total <= 7) {
+        return Array.from({ length: total }, function (_, i) { return i + 1; });
+      }
+      const pages = [];
+      pages.push(1);
+      if (current > 3) pages.push('...');
+      for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+        pages.push(i);
+      }
+      if (current < total - 2) pages.push('...');
+      pages.push(total);
+      return pages;
+    }
+
+    function goToPage(page) {
+      const totalPages = Math.ceil(filteredData.length / perPage);
+      if (page < 1 || page > totalPages) return;
+      currentPage = page;
+      renderTable();
+      renderPagination();
+      // Scroll to table top
+      document.querySelector('.data-table').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ===== File Upload =====
+    function handleFileUpload(file) {
+      const statusEl = document.getElementById('upload-status');
+      statusEl.classList.remove('hidden');
+      statusEl.textContent = '読み込み中...';
+      statusEl.className = 'text-sm text-slate-500 mt-3';
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          let text = e.target.result;
+          const records = parseCSV(text);
+
+          if (records.length === 0) {
+            statusEl.textContent = 'データが見つかりませんでした。CSVの形式を確認してください。';
+            statusEl.className = 'text-sm text-red-500 mt-3';
+            return;
+          }
+
+          allData = records;
+          currentPage = 1;
+          applyFilters();
+          updateSummaryCards();
+
+          statusEl.textContent = `${records.length} 件のデータを読み込みました`;
+          statusEl.className = 'text-sm text-emerald-600 mt-3 font-medium';
+
+          // Flash effect
+          const dropzone = document.getElementById('dropzone');
+          dropzone.classList.add('upload-success');
+          setTimeout(function () { dropzone.classList.remove('upload-success'); }, 1500);
+        } catch (err) {
+          statusEl.textContent = 'ファイルの読み込みに失敗しました: ' + err.message;
+          statusEl.className = 'text-sm text-red-500 mt-3';
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // ===== Summary Cards =====
+    function updateSummaryCards() {
+      const uniquePatients = new Set(allData.map(function (r) { return r.patient_id; })).size;
+      const totalClaims = allData.length;
+      const totalRevenue = allData.reduce(function (sum, r) { return sum + (r.amount || 0); }, 0);
+      const avgPoints = totalClaims > 0 ? Math.round(allData.reduce(function (sum, r) { return sum + (r.points || 0); }, 0) / totalClaims) : 0;
+
+      document.getElementById('stat-patients').textContent = uniquePatients.toLocaleString();
+      document.getElementById('stat-claims').textContent = totalClaims.toLocaleString() + ' 件';
+      document.getElementById('stat-revenue').textContent = formatCurrency(totalRevenue);
+      document.getElementById('stat-avg-points').textContent = formatPoints(avgPoints);
+    }
+  </script>
+</body>
+</html>
