@@ -19,7 +19,7 @@
 
   <div id="app-header"></div>
 
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <main class="app-main max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
     <!-- Page Title Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -38,6 +38,50 @@
         </button>
       </div>
     </div>
+
+    <!-- CSV Upload Area -->
+    <section class="mb-6 animate-fade-in">
+      <div id="dropzone" class="dropzone bg-white rounded-xl border-2 border-dashed border-slate-300 p-6 text-center cursor-pointer hover:border-medical-400 hover:bg-cyan-50/30">
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div class="dropzone-icon">
+            <i class="fa-solid fa-cloud-arrow-up text-3xl text-slate-400"></i>
+          </div>
+          <div class="sm:text-left">
+            <p class="text-base font-semibold text-slate-700">レセプトデータを取り込む</p>
+            <p class="text-sm text-slate-400">CSVファイルをドラッグ&ドロップ、またはファイルを選択</p>
+          </div>
+          <label class="inline-flex items-center gap-2 px-4 py-2 bg-medical-600 text-white rounded-lg text-sm font-medium hover:bg-medical-700 transition-colors cursor-pointer flex-shrink-0">
+            <i class="fa-solid fa-folder-open"></i>
+            ファイルを選択
+            <input type="file" id="file-input" accept=".csv" class="hidden">
+          </label>
+        </div>
+        <p id="upload-status" class="text-sm text-slate-400 mt-3 hidden"></p>
+      </div>
+    </section>
+
+    <!-- Import History -->
+    <section id="import-history-section" class="mb-6 animate-fade-in hidden">
+      <div class="bg-white rounded-xl shadow-elevation-1 overflow-hidden">
+        <button onclick="toggleImportHistory()" class="w-full flex items-center justify-between px-5 py-3 hover:bg-slate-50 transition-colors">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-medical-600"></i>
+            <h3 class="text-sm font-semibold text-slate-900">取り込み履歴</h3>
+            <span id="import-history-count" class="badge bg-medical-50 text-medical-700">0</span>
+          </div>
+          <i id="import-history-chevron" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform"></i>
+        </button>
+        <div id="import-history-body" class="hidden border-t border-slate-100">
+          <div id="import-history-list" class="divide-y divide-slate-100">
+          </div>
+          <div class="px-5 py-3 border-t border-slate-100">
+            <button onclick="clearImportHistory()" class="text-xs text-slate-400 hover:text-red-500 transition-colors">
+              <i class="fa-solid fa-trash-can mr-1"></i>履歴をクリア
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Search & Filter Bar -->
     <section class="bg-white rounded-xl shadow-elevation-1 p-4 mb-6 animate-fade-in">
@@ -229,7 +273,7 @@
     </div>
   </div>
 
-  <footer class="mt-12 py-6 border-t border-slate-200">
+  <footer class="app-main mt-12 py-6 border-t border-slate-200">
     <p class="text-center text-sm text-slate-400">Clinic Board &copy; 2026</p>
   </footer>
 
@@ -262,6 +306,8 @@
 
       populateFilters();
       setupEventListeners();
+      setupFileUpload();
+      renderImportHistory();
       applyFilters();
     });
 
@@ -606,6 +652,159 @@
 
       showToast('レセプトを削除しました', 'info');
       applyFilters();
+    }
+
+    // ===== File Upload =====
+    function setupFileUpload() {
+      var dropzone = document.getElementById('dropzone');
+      var fileInput = document.getElementById('file-input');
+
+      dropzone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        this.classList.add('drag-over');
+      });
+      dropzone.addEventListener('dragleave', function () {
+        this.classList.remove('drag-over');
+      });
+      dropzone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        this.classList.remove('drag-over');
+        var file = e.dataTransfer.files[0];
+        if (file && file.name.endsWith('.csv')) {
+          handleFileUpload(file);
+        }
+      });
+      fileInput.addEventListener('change', function () {
+        if (this.files[0]) {
+          handleFileUpload(this.files[0]);
+          this.value = '';
+        }
+      });
+    }
+
+    function handleFileUpload(file) {
+      var statusEl = document.getElementById('upload-status');
+      statusEl.classList.remove('hidden');
+      statusEl.textContent = '読み込み中...';
+      statusEl.className = 'text-sm text-slate-500 mt-3';
+
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          var records = parseCSV(e.target.result);
+
+          if (records.length === 0) {
+            statusEl.textContent = 'データが見つかりませんでした。CSVの形式を確認してください。';
+            statusEl.className = 'text-sm text-red-500 mt-3';
+            return;
+          }
+
+          // Merge into allData
+          allData = records.concat(allData);
+          saveReceiptData(allData);
+
+          // Record import history
+          addImportHistory(file.name, records.length);
+
+          currentPage = 1;
+          applyFilters();
+
+          statusEl.textContent = file.name + ' から ' + records.length + ' 件のデータを取り込みました';
+          statusEl.className = 'text-sm text-emerald-600 mt-3 font-medium';
+
+          var dropzone = document.getElementById('dropzone');
+          dropzone.classList.add('upload-success');
+          setTimeout(function () { dropzone.classList.remove('upload-success'); }, 1500);
+
+          showToast(records.length + ' 件のレセプトを取り込みました');
+        } catch (err) {
+          statusEl.textContent = 'ファイルの読み込みに失敗しました: ' + err.message;
+          statusEl.className = 'text-sm text-red-500 mt-3';
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // ===== Import History =====
+    function getImportHistory() {
+      try { return JSON.parse(localStorage.getItem('importHistory') || '[]'); }
+      catch (e) { return []; }
+    }
+
+    function saveImportHistory(history) {
+      localStorage.setItem('importHistory', JSON.stringify(history));
+    }
+
+    function addImportHistory(filename, count) {
+      var history = getImportHistory();
+      history.unshift({
+        id: Date.now(),
+        filename: filename,
+        count: count,
+        date: new Date().toISOString(),
+      });
+      // Keep max 20 entries
+      if (history.length > 20) history = history.slice(0, 20);
+      saveImportHistory(history);
+      renderImportHistory();
+    }
+
+    function renderImportHistory() {
+      var history = getImportHistory();
+      var section = document.getElementById('import-history-section');
+      var countEl = document.getElementById('import-history-count');
+      var listEl = document.getElementById('import-history-list');
+
+      if (history.length === 0) {
+        section.classList.add('hidden');
+        return;
+      }
+
+      section.classList.remove('hidden');
+      countEl.textContent = history.length + ' 件';
+
+      listEl.innerHTML = history.map(function (item) {
+        var d = new Date(item.date);
+        var dateStr = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+
+        return '<div class="flex items-center justify-between px-5 py-3">' +
+          '<div class="flex items-center gap-3 min-w-0">' +
+            '<div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">' +
+              '<i class="fa-solid fa-file-csv text-emerald-600 text-sm"></i>' +
+            '</div>' +
+            '<div class="min-w-0">' +
+              '<p class="text-sm font-medium text-slate-700 truncate">' + item.filename + '</p>' +
+              '<p class="text-xs text-slate-400">' + dateStr + '</p>' +
+            '</div>' +
+          '</div>' +
+          '<div class="flex items-center gap-3 flex-shrink-0">' +
+            '<span class="badge bg-blue-50 text-blue-700">' + item.count + ' 件</span>' +
+            '<button onclick="removeImportHistory(' + item.id + ')" class="p-1 text-slate-300 hover:text-red-500 transition-colors" title="削除">' +
+              '<i class="fa-solid fa-xmark text-xs"></i>' +
+            '</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function toggleImportHistory() {
+      var body = document.getElementById('import-history-body');
+      var chevron = document.getElementById('import-history-chevron');
+      body.classList.toggle('hidden');
+      chevron.style.transform = body.classList.contains('hidden') ? '' : 'rotate(180deg)';
+    }
+
+    function removeImportHistory(id) {
+      var history = getImportHistory().filter(function (h) { return h.id !== id; });
+      saveImportHistory(history);
+      renderImportHistory();
+    }
+
+    function clearImportHistory() {
+      if (!confirm('取り込み履歴をすべてクリアしますか？')) return;
+      saveImportHistory([]);
+      renderImportHistory();
+      showToast('取り込み履歴をクリアしました', 'info');
     }
   </script>
 </body>
